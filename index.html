@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirFoxer - Internal Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-orange: #FF6B00;
+            --hover-orange: #E65A00;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+        }
+        .bg-orange-brand { background-color: var(--primary-orange); }
+        .text-orange-brand { color: var(--primary-orange); }
+        .border-orange-brand { border-color: var(--primary-orange); }
+        .hover-bg-orange:hover { background-color: var(--hover-orange); }
+        
+        /* Smooth transitions */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card {
+            box-shadow: 0 10px 25px -5px rgba(255, 107, 0, 0.1), 0 8px 10px -6px rgba(255, 107, 0, 0.1);
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- LOGIN OVERLAY -->
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div class="w-full max-w-md p-8 login-card border border-gray-100 rounded-2xl fade-in">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-orange-100 rounded-full mb-4">
+                    <i class="fas fa-shield-halved text-orange-brand text-3xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800">AirFoxer Login</h1>
+                <p class="text-gray-500 mt-2">Please authenticate to access the site files.</p>
+            </div>
+
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="username" required
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                        placeholder="Enter username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password" required
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                        placeholder="••••••••">
+                </div>
+                <div id="error-message" class="hidden text-red-500 text-sm font-medium bg-red-50 p-3 rounded-lg text-center">
+                    Invalid credentials. Please try again.
+                </div>
+                <button type="submit" 
+                    class="w-full bg-orange-brand text-white font-bold py-3 rounded-lg hover-bg-orange transition-colors shadow-lg shadow-orange-200">
+                    Login to Dashboard
+                </button>
+            </form>
+            <div class="mt-8 text-center text-xs text-gray-400">
+                &copy; 2026 AirFoxer Systems Inc.
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD (Hidden until login) -->
+    <div id="main-content" class="hidden flex-grow flex flex-col">
+        <!-- Navigation -->
+        <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-orange-brand rounded-lg flex items-center justify-center text-white font-bold text-xl">
+                    AF
+                </div>
+                <span class="text-xl font-bold text-gray-800 tracking-tight">AirFoxer <span class="text-orange-brand">Portal</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm font-medium text-gray-600 hidden md:inline">Welcome, <span id="display-user"></span></span>
+                <button onclick="logout()" class="text-gray-500 hover:text-red-500 transition-colors">
+                    <i class="fas fa-sign-out-alt text-lg"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Dashboard Content -->
+        <main class="max-w-6xl mx-auto w-full p-6 md:p-12">
+            <header class="mb-10">
+                <h2 class="text-3xl font-extrabold text-gray-900">Site Management</h2>
+                <p class="text-gray-600">Quick access to all site directories and functional modules.</p>
+            </header>
+
+            <!-- Tools Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Admin Module -->
+                <a href="admin.html" target="_blank" rel="noopener noreferrer" class="tool-card group bg-white p-6 rounded-2xl border border-gray-100 transition-all">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="p-3 bg-orange-50 rounded-xl group-hover:bg-orange-brand transition-colors">
+                            <i class="fas fa-user-gear text-orange-brand group-hover:text-white text-2xl"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 group-hover:text-orange-brand"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-gray-800">Admin Panel</h3>
+                    <p class="text-gray-500 text-sm mt-1">Manage core system settings and site users.</p>
+                </a>
+
+                <!-- Staff Portal -->
+                <a href="staffportal.html" target="_blank" rel="noopener noreferrer" class="tool-card group bg-white p-6 rounded-2xl border border-gray-100 transition-all">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-500 transition-colors">
+                            <i class="fas fa-users-viewfinder text-blue-500 group-hover:text-white text-2xl"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 group-hover:text-blue-500"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-gray-800">Staff Portal</h3>
+                    <p class="text-gray-500 text-sm mt-1">Employee database and internal resource links.</p>
+                </a>
+
+                <!-- ID Generator (Subfolder file) -->
+                <a href="ID GENERATOR/id.html" target="_blank" rel="noopener noreferrer" class="tool-card group bg-white p-6 rounded-2xl border border-gray-100 transition-all">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-500 transition-colors">
+                            <i class="fas fa-id-card text-purple-500 group-hover:text-white text-2xl"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 group-hover:text-purple-500"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-gray-800">ID Generator</h3>
+                    <p class="text-gray-500 text-sm mt-1">Generate and print dynamic employee identity cards.</p>
+                </a>
+
+                <!-- Payment Gateway -->
+                <a href="payment.html" target="_blank" rel="noopener noreferrer" class="tool-card group bg-white p-6 rounded-2xl border border-gray-100 transition-all">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="p-3 bg-green-50 rounded-xl group-hover:bg-green-500 transition-colors">
+                            <i class="fas fa-credit-card text-green-500 group-hover:text-white text-2xl"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 group-hover:text-green-500"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-gray-800">Payments</h3>
+                    <p class="text-gray-500 text-sm mt-1">Process transactions and view financial reports.</p>
+                </a>
+
+                <!-- URL Converter -->
+                <a href="urlconvcert.html" target="_blank" rel="noopener noreferrer" class="tool-card group bg-white p-6 rounded-2xl border border-gray-100 transition-all">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="p-3 bg-amber-50 rounded-xl group-hover:bg-amber-500 transition-colors">
+                            <i class="fas fa-link text-amber-600 group-hover:text-white text-2xl"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-300 group-hover:text-amber-500"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-gray-800">URL Converter</h3>
+                    <p class="text-gray-500 text-sm mt-1">Convert and shorten system URLs for certificates.</p>
+                </a>
+
+                <!-- Asset Browser -->
+                <div class="group bg-gray-50 p-6 rounded-2xl border border-dashed border-gray-300 flex flex-col justify-center items-center text-center opacity-60">
+                    <i class="fas fa-folder-open text-gray-400 text-3xl mb-2"></i>
+                    <h3 class="font-bold text-gray-600">Assets Folder</h3>
+                    <p class="text-gray-400 text-xs mt-1">Static images and icons stored in root.</p>
+                </div>
+
+            </div>
+
+            <!-- Info Footer -->
+            <div class="mt-12 p-6 bg-orange-50 rounded-2xl border border-orange-100 flex items-center gap-4">
+                <i class="fas fa-circle-info text-orange-brand text-xl"></i>
+                <p class="text-sm text-orange-800">
+                    <strong>Note:</strong> If buttons do not open, ensure the files are correctly placed in the root directory and the <strong>ID GENERATOR</strong> folder as shown in your file explorer.
+                </p>
+            </div>
+        </main>
+
+        <footer class="mt-auto border-t border-gray-200 py-6 px-6 text-center text-gray-400 text-sm">
+            &copy; 2026 AirFoxer Solutions. All rights reserved. Built with orange and white excellence.
+        </footer>
+    </div>
+
+    <script>
+        const LOGIN_USERNAME = "AirFoxer";
+        const LOGIN_PASSWORD = "AirFoxer@hack12";
+
+        const loginForm = document.getElementById('login-form');
+        const overlay = document.getElementById('login-overlay');
+        const mainContent = document.getElementById('main-content');
+        const errorMsg = document.getElementById('error-message');
+        const displayUser = document.getElementById('display-user');
+
+        // Check for existing session (optional, using sessionStorage)
+        window.onload = () => {
+            if (sessionStorage.getItem('airfoxer_auth') === 'true') {
+                showDashboard();
+            }
+        };
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if (user === LOGIN_USERNAME && pass === LOGIN_PASSWORD) {
+                sessionStorage.setItem('airfoxer_auth', 'true');
+                showDashboard();
+            } else {
+                errorMsg.classList.remove('hidden');
+                document.getElementById('password').value = "";
+                setTimeout(() => {
+                    errorMsg.classList.add('hidden');
+                }, 3000);
+            }
+        });
+
+        function showDashboard() {
+            overlay.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+            displayUser.innerText = LOGIN_USERNAME;
+        }
+
+        function logout() {
+            sessionStorage.removeItem('airfoxer_auth');
+            location.reload();
+        }
+    </script>
+</body>
+</html>

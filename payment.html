@@ -1,0 +1,2552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirFoxer Payment Monitor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #f97316;
+            --secondary: #3b82f6;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-dark: #0f172a;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-light: #94a3b8;
+            --border: #e2e8f0;
+            --border-dark: #334155;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            
+            /* Payment specific colors */
+            --payment-pending: #f59e0b;
+            --payment-verified: #22c55e;
+            --payment-rejected: #ef4444;
+            --payment-sponsor: #8b5cf6;
+        }
+
+        body.dark-mode {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1e293b 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .sidebar-brand-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+
+        .sidebar-link.active {
+            border-left-color: var(--primary);
+            background: rgba(249,115,22,0.1);
+            color: white;
+        }
+
+        .sidebar-link i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-header {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+            color: var(--primary);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online {
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--danger);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+        }
+
+        /* Toast Container */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 16px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        .toast-warning { background: var(--warning); }
+        .toast-info { background: var(--info); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Loading Spinner */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid var(--primary);
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.pending { background: #fef3c7; color: var(--payment-pending); }
+        .stat-icon.verified { background: #d1fae5; color: var(--payment-verified); }
+        .stat-icon.rejected { background: #fee2e2; color: var(--payment-rejected); }
+        .stat-icon.total { background: #dbeafe; color: var(--secondary); }
+        .stat-icon.amount { background: #f3e8ff; color: var(--payment-sponsor); }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-sub {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .filter-select {
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .search-box {
+            flex: 2;
+            position: relative;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(249,115,22,0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        /* Tables */
+        .table-container {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 32px;
+        }
+
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+        }
+
+        .table-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            gap: 4px;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-verified {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-sponsor {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+
+        /* Action Icons */
+        .action-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            color: white;
+            margin: 0 4px;
+        }
+
+        .action-icon.verify { background: var(--success); }
+        .action-icon.reject { background: var(--danger); }
+        .action-icon.view { background: var(--secondary); }
+        .action-icon.edit { background: var(--payment-sponsor); }
+        .action-icon.delete { background: var(--danger); }
+
+        .action-icon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal {
+            background: var(--bg-primary);
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--bg-primary);
+            z-index: 10;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--border);
+            color: var(--primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Timeline View */
+        .timeline {
+            margin-top: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .timeline-icon.pending { background: #fef3c7; color: var(--payment-pending); }
+        .timeline-icon.verified { background: #d1fae5; color: var(--payment-verified); }
+        .timeline-icon.rejected { background: #fee2e2; color: var(--payment-rejected); }
+        .timeline-icon.sponsor { background: #f3e8ff; color: var(--payment-sponsor); }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-content h4 {
+            margin-bottom: 4px;
+            font-size: 16px;
+        }
+
+        .timeline-content p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .timeline-time {
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        /* Summary Cards */
+        .summary-card {
+            background: linear-gradient(135deg, var(--primary), #ea580c);
+            color: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .summary-title {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .summary-amount {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .summary-detail {
+            display: flex;
+            gap: 24px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .sidebar.active {
+                display: flex;
+                position: fixed;
+                z-index: 1000;
+                width: 100%;
+            }
+            
+            .mobile-menu-btn {
+                display: block !important;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-bar {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+            
+            .action-buttons {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 800px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen" style="display: flex;">
+        <div class="spinner"></div>
+        <p style="color: white; font-weight: 600;">Loading Payment Monitor...</p>
+    </div>
+
+    <!-- App Container -->
+    <div id="app-container" class="app-container" style="display: none;">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div>
+                        <div>Payment Monitor</div>
+                        <div class="sidebar-subtitle">v2.0</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a class="sidebar-link active" onclick="switchView('overview')">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Overview</span>
+                </a>
+                <a class="sidebar-link" onclick="switchView('pending')">
+                    <i class="fas fa-clock"></i>
+                    <span>Pending Payments</span>
+                    <span id="pending-count" class="badge" style="margin-left: auto;">0</span>
+                </a>
+                <a class="sidebar-link" onclick="switchView('verified')">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Verified Payments</span>
+                </a>
+                <a class="sidebar-link" onclick="switchView('rejected')">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Rejected Payments</span>
+                </a>
+                <a class="sidebar-link" onclick="switchView('sponsor')">
+                    <i class="fas fa-gem"></i>
+                    <span>Sponsor Amounts</span>
+                </a>
+                <a class="sidebar-link" onclick="switchView('history')">
+                    <i class="fas fa-history"></i>
+                    <span>Transaction History</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div style="font-size: 11px; color: #94a3b8; text-align: center;">
+                    AirFoxer Hackathon 2026<br>
+                    Total Collected: <span id="sidebar-total">₹0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <header class="main-header">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-title">
+                    <h1 id="current-view-title">Payment Overview</h1>
+                    <p id="current-view-subtitle">Real-time payment monitoring dashboard</p>
+                </div>
+                <div class="header-actions">
+                    <button class="theme-toggle" onclick="toggleDarkMode()">
+                        <i id="dark-mode-icon" class="fas fa-moon"></i>
+                    </button>
+                    <div class="status-indicator">
+                        <span class="status-dot" id="status-dot"></span>
+                        <span id="connection-status">Initializing...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area" id="content-area">
+                <div style="text-align: center; padding: 60px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
+                    <p style="margin-top: 20px; color: var(--text-secondary);">Loading payment data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Sponsor Payment Modal -->
+    <div id="sponsor-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Sponsor Amount</h2>
+                <button class="modal-close" onclick="closeSponsorModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="sponsor-form" onsubmit="event.preventDefault(); addSponsorPayment();">
+                    <div class="form-group">
+                        <label>Sponsor Name *</label>
+                        <input type="text" id="sponsor-name" class="form-control" placeholder="e.g., Tech Corp" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Amount (₹) *</label>
+                        <input type="number" id="sponsor-amount" class="form-control" placeholder="50000" min="1" step="1000" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Purpose / Description</label>
+                        <textarea id="sponsor-description" class="form-control" placeholder="e.g., Title Sponsor, Gold Sponsor, etc." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Transaction ID (Optional)</label>
+                            <input type="text" id="sponsor-txn-id" class="form-control" placeholder="TXN123456">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="sponsor-date" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">
+                            <i class="fas fa-plus-circle"></i> Add Sponsor Amount
+                        </button>
+                        <button type="button" onclick="closeSponsorModal()" class="btn btn-secondary" style="flex: 1;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Details Modal -->
+    <div id="payment-detail-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Payment Details</h2>
+                <button class="modal-close" onclick="closePaymentDetailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="payment-detail-content">
+                    <!-- Payment details loaded dynamically -->
+                </div>
+                
+                <div style="margin-top: 24px;" id="payment-actions">
+                    <!-- Action buttons loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Payment Modal -->
+    <div id="reject-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Reject Payment</h2>
+                <button class="modal-close" onclick="closeRejectModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="reject-form" onsubmit="event.preventDefault(); confirmRejectPayment();">
+                    <div class="form-group">
+                        <label>Rejection Reason *</label>
+                        <textarea id="rejection-reason" class="form-control" placeholder="Please provide reason for rejection..." rows="4" required></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button type="submit" class="btn btn-danger" style="flex: 1;">
+                            <i class="fas fa-times-circle"></i> Confirm Rejection
+                        </button>
+                        <button type="button" onclick="closeRejectModal()" class="btn btn-secondary" style="flex: 1;">
+                            Cancel
+                        </button>
+                    </div>
+                    
+                    <input type="hidden" id="reject-payment-id">
+                    <input type="hidden" id="reject-team-id">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--danger); margin-bottom: 16px;"></i>
+                    <h3 style="margin-bottom: 12px;">Are you sure?</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                        This action cannot be undone. The sponsor amount will be permanently deleted.
+                    </p>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-danger" style="flex: 1;" onclick="confirmDeleteSponsor()">
+                            <i class="fas fa-trash"></i> Yes, Delete
+                        </button>
+                        <button class="btn btn-secondary" style="flex: 1;" onclick="closeDeleteModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="delete-sponsor-id">
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ============================================
+        // FIREBASE CONFIGURATION
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCipUkkNySML4U1VI2fH1RyWgXYqvDMPRQ",
+            authDomain: "airfoxer-hackathon.firebaseapp.com",
+            projectId: "airfoxer-hackathon",
+            storageBucket: "airfoxer-hackathon.firebasestorage.app",
+            messagingSenderId: "51363230854",
+            appId: "1:51363230854:web:4a33c8a92ebebb41b5cd07"
+        };
+
+        // Initialize Firebase with error handling
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log("✅ Firebase initialized successfully");
+        } catch (error) {
+            console.error("❌ Firebase initialization error:", error);
+            document.getElementById('connection-status').textContent = 'Firebase Error';
+            document.getElementById('status-dot').className = 'status-dot error';
+        }
+
+        // ============================================
+        // COLLECTIONS
+        // ============================================
+        const COLLECTIONS = {
+            PAYMENTS: 'payments',
+            TEAMS: 'teams'
+        };
+
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+        let currentView = 'overview';
+        let allPayments = [];
+        let allTeams = [];
+        let sponsorPayments = [];
+        let pendingDeleteId = null;
+        let paymentStats = {
+            pending: 0,
+            verified: 0,
+            rejected: 0,
+            sponsor: 0,
+            totalAmount: 0,
+            sponsorAmount: 0,
+            teamAmount: 0
+        };
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            let icon = 'fa-info-circle';
+            if (type === 'success') icon = 'fa-check-circle';
+            if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'warning') icon = 'fa-exclamation-triangle';
+            
+            toast.innerHTML = `
+                <i class="fas ${icon}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            try {
+                const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+                if (isNaN(date.getTime())) return 'Invalid Date';
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return 'Invalid Date';
+            }
+        }
+
+        function formatCurrency(amount) {
+            if (amount === undefined || amount === null) amount = 0;
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+        }
+
+        function updateConnectionStatus(status, type = 'success') {
+            const indicator = document.getElementById('connection-status');
+            const dot = document.getElementById('status-dot');
+            
+            if (indicator) indicator.textContent = status;
+            if (dot) {
+                dot.className = 'status-dot';
+                if (type === 'success') dot.classList.add('online');
+                if (type === 'error') dot.classList.add('error');
+            }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            const icon = document.getElementById('dark-mode-icon');
+            
+            if (isDark) {
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function switchView(view) {
+            currentView = view;
+            
+            // Update active state
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            const links = document.querySelectorAll('.sidebar-link');
+            links.forEach(link => {
+                if (link.getAttribute('onclick')?.includes(`'${view}'`)) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Update title
+            const titles = {
+                'overview': 'Payment Overview',
+                'pending': 'Pending Payments',
+                'verified': 'Verified Payments',
+                'rejected': 'Rejected Payments',
+                'sponsor': 'Sponsor Amounts',
+                'history': 'Transaction History'
+            };
+            
+            document.getElementById('current-view-title').textContent = titles[view] || 'Payment Monitor';
+            document.getElementById('current-view-subtitle').textContent = getSubtitle(view);
+            
+            // Render appropriate view
+            renderView(view);
+        }
+
+        function getSubtitle(view) {
+            switch(view) {
+                case 'overview':
+                    return `${paymentStats.verified} verified • ${paymentStats.pending} pending`;
+                case 'pending':
+                    return `${paymentStats.pending} payments awaiting verification`;
+                case 'verified':
+                    return `${paymentStats.verified} verified payments • ${formatCurrency(paymentStats.teamAmount)} collected`;
+                case 'rejected':
+                    return `${paymentStats.rejected} rejected payments`;
+                case 'sponsor':
+                    return `${paymentStats.sponsor} sponsors • ${formatCurrency(paymentStats.sponsorAmount)} total`;
+                case 'history':
+                    return `Complete transaction history`;
+                default:
+                    return 'Real-time payment monitoring dashboard';
+            }
+        }
+
+        // ============================================
+        // DATA LOADING
+        // ============================================
+        async function loadAllData() {
+            showLoading(true);
+            
+            try {
+                if (!db) {
+                    throw new Error('Firebase not initialized');
+                }
+
+                updateConnectionStatus('Loading data...', 'warning');
+                
+                // Load payments
+                const paymentsSnap = await db.collection(COLLECTIONS.PAYMENTS).get();
+                allPayments = paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log(`✅ Loaded ${allPayments.length} payments`);
+                
+                // Load teams
+                const teamsSnap = await db.collection(COLLECTIONS.TEAMS).get();
+                allTeams = teamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log(`✅ Loaded ${allTeams.length} teams`);
+                
+                // Filter sponsor payments
+                sponsorPayments = allPayments.filter(p => p.type === 'sponsor');
+                
+                // Calculate stats
+                calculateStats();
+                
+                // Update UI
+                updateConnectionStatus('Connected', 'success');
+                
+                // Hide loading and show app
+                document.getElementById('app-container').style.display = 'flex';
+                showLoading(false);
+                
+                // Render initial view
+                renderView(currentView);
+                
+                // Set up real-time listeners
+                setupListeners();
+                
+            } catch (error) {
+                console.error("❌ Error loading data:", error);
+                updateConnectionStatus('Error: ' + error.message, 'error');
+                showToast("Failed to load payment data: " + error.message, "error");
+                
+                // Still show the app with empty data
+                document.getElementById('app-container').style.display = 'flex';
+                showLoading(false);
+                document.getElementById('content-area').innerHTML = `
+                    <div style="text-align: center; padding: 60px; color: var(--danger);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px;"></i>
+                        <h3>Error Loading Data</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 20px;">
+                            <i class="fas fa-sync-alt"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function setupListeners() {
+            if (!db) return;
+            
+            // Listen for payment changes
+            db.collection(COLLECTIONS.PAYMENTS).onSnapshot((snapshot) => {
+                allPayments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                sponsorPayments = allPayments.filter(p => p.type === 'sponsor');
+                calculateStats();
+                renderView(currentView);
+            }, (error) => {
+                console.error("Payment listener error:", error);
+            });
+            
+            // Listen for team changes
+            db.collection(COLLECTIONS.TEAMS).onSnapshot((snapshot) => {
+                allTeams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                calculateStats();
+                renderView(currentView);
+            }, (error) => {
+                console.error("Team listener error:", error);
+            });
+        }
+
+        function calculateStats() {
+            // Filter out sponsor payments from regular payment stats
+            const teamPayments = allPayments.filter(p => p.type !== 'sponsor');
+            
+            paymentStats = {
+                pending: teamPayments.filter(p => p.status === 'pending').length,
+                verified: teamPayments.filter(p => p.status === 'verified').length,
+                rejected: teamPayments.filter(p => p.status === 'rejected').length,
+                sponsor: sponsorPayments.length,
+                totalAmount: 0,
+                sponsorAmount: 0,
+                teamAmount: 0
+            };
+            
+            // Calculate team payments
+            teamPayments.filter(p => p.status === 'verified').forEach(p => {
+                paymentStats.teamAmount += p.amount || 2000;
+            });
+            
+            // Calculate sponsor amounts
+            sponsorPayments.forEach(p => {
+                paymentStats.sponsorAmount += p.amount || 0;
+            });
+            
+            paymentStats.totalAmount = paymentStats.teamAmount + paymentStats.sponsorAmount;
+            
+            // Update pending count badge
+            const pendingBadge = document.getElementById('pending-count');
+            if (pendingBadge) pendingBadge.textContent = paymentStats.pending;
+            
+            const sidebarTotal = document.getElementById('sidebar-total');
+            if (sidebarTotal) sidebarTotal.textContent = formatCurrency(paymentStats.totalAmount);
+        }
+
+        // ============================================
+        // RENDER FUNCTIONS
+        // ============================================
+        function renderView(view) {
+            try {
+                switch(view) {
+                    case 'overview':
+                        renderOverview();
+                        break;
+                    case 'pending':
+                        renderPaymentList('pending');
+                        break;
+                    case 'verified':
+                        renderPaymentList('verified');
+                        break;
+                    case 'rejected':
+                        renderPaymentList('rejected');
+                        break;
+                    case 'sponsor':
+                        renderSponsorList();
+                        break;
+                    case 'history':
+                        renderTransactionHistory();
+                        break;
+                    default:
+                        renderOverview();
+                }
+            } catch (error) {
+                console.error("Render error:", error);
+                document.getElementById('content-area').innerHTML = `
+                    <div style="text-align: center; padding: 60px; color: var(--danger);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px;"></i>
+                        <h3>Error Rendering View</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderOverview() {
+            const html = `
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="openSponsorModal()">
+                        <i class="fas fa-plus-circle"></i> Add Sponsor Amount
+                    </button>
+                    <button class="btn btn-success" onclick="exportPaymentReport()">
+                        <i class="fas fa-download"></i> Export Report
+                    </button>
+                    <button class="btn btn-secondary" onclick="verifyAllPending()">
+                        <i class="fas fa-check-double"></i> Verify All Pending
+                    </button>
+                </div>
+
+                <!-- Summary Card -->
+                <div class="summary-card">
+                    <div class="summary-title">Total Collected Amount</div>
+                    <div class="summary-amount">${formatCurrency(paymentStats.totalAmount)}</div>
+                    <div class="summary-detail">
+                        <span><i class="fas fa-users"></i> Team Payments: ${formatCurrency(paymentStats.teamAmount)}</span>
+                        <span><i class="fas fa-gem"></i> Sponsor Amount: ${formatCurrency(paymentStats.sponsorAmount)}</span>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card" onclick="switchView('pending')">
+                        <div class="stat-header">
+                            <div class="stat-title">Pending Payments</div>
+                            <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+                        </div>
+                        <div class="stat-value">${paymentStats.pending}</div>
+                        <div class="stat-sub">Awaiting verification</div>
+                    </div>
+
+                    <div class="stat-card" onclick="switchView('verified')">
+                        <div class="stat-header">
+                            <div class="stat-title">Verified Payments</div>
+                            <div class="stat-icon verified"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div class="stat-value">${paymentStats.verified}</div>
+                        <div class="stat-sub">${formatCurrency(paymentStats.teamAmount)} collected</div>
+                    </div>
+
+                    <div class="stat-card" onclick="switchView('rejected')">
+                        <div class="stat-header">
+                            <div class="stat-title">Rejected Payments</div>
+                            <div class="stat-icon rejected"><i class="fas fa-times-circle"></i></div>
+                        </div>
+                        <div class="stat-value">${paymentStats.rejected}</div>
+                        <div class="stat-sub">Need resubmission</div>
+                    </div>
+
+                    <div class="stat-card" onclick="switchView('sponsor')">
+                        <div class="stat-header">
+                            <div class="stat-title">Sponsor Amounts</div>
+                            <div class="stat-icon total"><i class="fas fa-gem"></i></div>
+                        </div>
+                        <div class="stat-value">${paymentStats.sponsor}</div>
+                        <div class="stat-sub">${formatCurrency(paymentStats.sponsorAmount)} total</div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2><i class="fas fa-history"></i> Recent Transactions</h2>
+                        <button class="btn btn-secondary" onclick="switchView('history')">View All</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Team/Sponsor</th>
+                                <th>UTR/Reference</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${getRecentTransactions(10).map(t => `
+                                <tr>
+                                    <td>${formatDate(t.date)}</td>
+                                    <td>
+                                        ${t.type === 'sponsor' ? 
+                                            '<span class="status-badge status-sponsor"><i class="fas fa-gem"></i> Sponsor</span>' : 
+                                            '<span class="status-badge"><i class="fas fa-users"></i> Team</span>'}
+                                    </td>
+                                    <td>${t.name || 'N/A'}</td>
+                                    <td><span style="font-family: monospace;">${t.reference || 'N/A'}</span></td>
+                                    <td style="font-weight: 700; color: var(--success);">${formatCurrency(t.amount)}</td>
+                                    <td>
+                                        <span class="status-badge status-${t.status === 'sponsor' ? 'sponsor' : t.status}">
+                                            ${t.status === 'sponsor' ? 'Active' : t.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="action-icon view" onclick="viewPaymentDetails('${t.id}')" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Payment Distribution -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px;">
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h2><i class="fas fa-chart-pie"></i> Payment Distribution</h2>
+                        </div>
+                        <div style="padding: 24px;">
+                            <div style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span>Team Payments (${paymentStats.verified} verified)</span>
+                                    <span style="font-weight: 700;">${formatCurrency(paymentStats.teamAmount)}</span>
+                                </div>
+                                <div style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${paymentStats.totalAmount > 0 ? (paymentStats.teamAmount / paymentStats.totalAmount * 100) : 0}%; height: 100%; background: var(--success);"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span>Sponsor Amounts (${paymentStats.sponsor} sponsors)</span>
+                                    <span style="font-weight: 700;">${formatCurrency(paymentStats.sponsorAmount)}</span>
+                                </div>
+                                <div style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${paymentStats.totalAmount > 0 ? (paymentStats.sponsorAmount / paymentStats.totalAmount * 100) : 0}%; height: 100%; background: var(--payment-sponsor);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h2><i class="fas fa-chart-line"></i> Quick Stats</h2>
+                        </div>
+                        <div style="padding: 24px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: 700; color: var(--primary);">${allTeams.length}</div>
+                                    <div style="font-size: 12px; color: var(--text-light);">Total Teams</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: 700; color: var(--success);">${paymentStats.verified}</div>
+                                    <div style="font-size: 12px; color: var(--text-light);">Paid Teams</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: 700; color: var(--warning);">${paymentStats.pending}</div>
+                                    <div style="font-size: 12px; color: var(--text-light);">Pending</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: 700; color: var(--payment-sponsor);">${paymentStats.sponsor}</div>
+                                    <div style="font-size: 12px; color: var(--text-light);">Sponsors</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('content-area').innerHTML = html;
+        }
+
+        function renderPaymentList(status) {
+            const payments = allPayments.filter(p => p.status === status && p.type !== 'sponsor');
+            
+            const html = `
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Filter by:</label>
+                        <select id="payment-filter" class="filter-select" onchange="filterPayments('${status}')">
+                            <option value="all">All Teams</option>
+                            <option value="with-team">With Team Details</option>
+                            <option value="without-team">Without Team</option>
+                        </select>
+                    </div>
+                    
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="payment-search" placeholder="Search by UTR, Team name..." onkeyup="searchPayments('${status}')">
+                    </div>
+                    
+                    <div class="action-buttons">
+                        ${status === 'pending' ? 
+                            `<button class="btn btn-success" onclick="verifyAllPending()">
+                                <i class="fas fa-check-double"></i> Verify All
+                            </button>` : ''}
+                        <button class="btn btn-secondary" onclick="exportPayments('${status}')">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Payments Table -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2>
+                            <i class="fas fa-${status === 'pending' ? 'clock' : status === 'verified' ? 'check-circle' : 'times-circle'}"></i>
+                            ${status.charAt(0).toUpperCase() + status.slice(1)} Payments (${payments.length})
+                        </h2>
+                    </div>
+                    <table id="payments-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Team Name</th>
+                                <th>UTR Number</th>
+                                <th>Amount</th>
+                                <th>Submitted By</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${payments.length === 0 ? `
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">
+                                        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                                        <h3>No ${status} payments found</h3>
+                                    </td>
+                                </tr>
+                            ` : payments.map(p => {
+                                const team = allTeams.find(t => t.id === p.teamId);
+                                return `
+                                    <tr data-team="${team ? team.teamName : ''}" data-utr="${p.utrNumber || ''}">
+                                        <td>${p.submittedAt ? formatDate(p.submittedAt) : 'N/A'}</td>
+                                        <td>
+                                            <div style="font-weight: 600;">${team ? team.teamName : 'Unknown Team'}</div>
+                                            <div style="font-size: 11px; color: var(--text-light);">${team ? team.organization : ''}</div>
+                                        </td>
+                                        <td>
+                                            <span style="font-family: monospace; font-weight: 600;">${p.utrNumber || 'N/A'}</span>
+                                        </td>
+                                        <td style="font-weight: 700; color: var(--success);">${formatCurrency(p.amount || 2000)}</td>
+                                        <td>
+                                            <div>${p.submittedByEmail || 'Unknown'}</div>
+                                            <div style="font-size: 11px; color: var(--text-light);">${p.submittedBy ? p.submittedBy.substring(0, 8) : ''}</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge status-${p.status}">
+                                                ${p.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="action-icon view" onclick="viewPaymentDetails('${p.id}')" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                ${p.status === 'pending' ? `
+                                                    <button class="action-icon verify" onclick="verifyPayment('${p.id}', '${p.teamId || ''}')" title="Verify">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button class="action-icon reject" onclick="openRejectModal('${p.id}', '${p.teamId || ''}')" title="Reject">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                ` : ''}
+                                                ${p.status === 'verified' ? `
+                                                    <button class="action-icon edit" onclick="editPayment('${p.id}')" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                ` : ''}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('content-area').innerHTML = html;
+        }
+
+        function renderSponsorList() {
+            const html = `
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="openSponsorModal()">
+                        <i class="fas fa-plus-circle"></i> Add New Sponsor Amount
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportSponsors()">
+                        <i class="fas fa-download"></i> Export Sponsors
+                    </button>
+                </div>
+
+                <!-- Sponsor Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Total Sponsors</div>
+                            <div class="stat-icon total"><i class="fas fa-handshake"></i></div>
+                        </div>
+                        <div class="stat-value">${sponsorPayments.length}</div>
+                        <div class="stat-sub">Active sponsors</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Total Amount</div>
+                            <div class="stat-icon amount"><i class="fas fa-coins"></i></div>
+                        </div>
+                        <div class="stat-value">${formatCurrency(paymentStats.sponsorAmount)}</div>
+                        <div class="stat-sub">From sponsors</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Average</div>
+                            <div class="stat-icon pending"><i class="fas fa-chart-line"></i></div>
+                        </div>
+                        <div class="stat-value">${formatCurrency(paymentStats.sponsorAmount / (sponsorPayments.length || 1))}</div>
+                        <div class="stat-sub">Per sponsor</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">This Month</div>
+                            <div class="stat-icon verified"><i class="fas fa-calendar"></i></div>
+                        </div>
+                        <div class="stat-value">${getThisMonthSponsorCount()}</div>
+                        <div class="stat-sub">New sponsors</div>
+                    </div>
+                </div>
+
+                <!-- Sponsors Table -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2><i class="fas fa-gem"></i> Sponsor Contributions</h2>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Sponsor Name</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Transaction ID</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sponsorPayments.length === 0 ? `
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">
+                                        <i class="fas fa-gem" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                                        <h3>No sponsor payments added yet</h3>
+                                        <p>Click "Add New Sponsor Amount" to add your first sponsor</p>
+                                    </td>
+                                </tr>
+                            ` : sponsorPayments.sort((a, b) => {
+                                const dateA = a.createdAt?.toDate?.() || new Date(a.date || 0);
+                                const dateB = b.createdAt?.toDate?.() || new Date(b.date || 0);
+                                return dateB - dateA;
+                            }).map(s => `
+                                <tr>
+                                    <td>${formatDate(s.createdAt || s.date)}</td>
+                                    <td>
+                                        <div style="font-weight: 600;">${s.sponsorName || s.name || 'Unnamed Sponsor'}</div>
+                                    </td>
+                                    <td>
+                                        <div style="max-width: 200px; color: var(--text-secondary); font-size: 13px;">
+                                            ${s.description || s.purpose || 'Sponsor contribution'}
+                                        </div>
+                                    </td>
+                                    <td style="font-weight: 700; color: var(--payment-sponsor); font-size: 16px;">
+                                        ${formatCurrency(s.amount)}
+                                    </td>
+                                    <td>
+                                        <span style="font-family: monospace;">${s.transactionId || s.txnId || 'N/A'}</span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-sponsor">
+                                            <i class="fas fa-check-circle"></i> Active
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="action-icon view" onclick="viewSponsorDetails('${s.id}')" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="action-icon edit" onclick="editSponsor('${s.id}')" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="action-icon delete" onclick="deleteSponsor('${s.id}')" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('content-area').innerHTML = html;
+        }
+
+        function renderTransactionHistory() {
+            const allTransactions = [
+                ...allPayments.map(p => ({
+                    id: p.id,
+                    type: p.type === 'sponsor' ? 'sponsor' : 'team',
+                    name: p.type === 'sponsor' ? (p.sponsorName || p.name) : (allTeams.find(t => t.id === p.teamId)?.teamName || 'Unknown Team'),
+                    reference: p.utrNumber || p.transactionId,
+                    amount: p.amount || 2000,
+                    status: p.status || (p.type === 'sponsor' ? 'sponsor' : 'pending'),
+                    date: p.submittedAt || p.createdAt || p.date
+                }))
+            ].sort((a, b) => {
+                const dateA = a.date?.toDate?.() || new Date(a.date || 0);
+                const dateB = b.date?.toDate?.() || new Date(b.date || 0);
+                return dateB - dateA;
+            });
+
+            const html = `
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Type:</label>
+                        <select id="history-type" class="filter-select" onchange="filterHistory()">
+                            <option value="all">All Transactions</option>
+                            <option value="team">Team Payments</option>
+                            <option value="sponsor">Sponsor Amounts</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Status:</label>
+                        <select id="history-status" class="filter-select" onchange="filterHistory()">
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="verified">Verified</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="sponsor">Sponsor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="history-search" placeholder="Search transactions..." onkeyup="filterHistory()">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="exportFullHistory()">
+                        <i class="fas fa-download"></i> Export Full History
+                    </button>
+                </div>
+
+                <!-- Timeline View -->
+                <div class="timeline" id="transaction-timeline">
+                    ${allTransactions.length === 0 ? `
+                        <div style="text-align: center; padding: 60px; color: var(--text-light);">
+                            <i class="fas fa-history" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <h3>No transactions found</h3>
+                        </div>
+                    ` : allTransactions.map(t => `
+                        <div class="timeline-item" data-type="${t.type}" data-status="${t.status}" data-name="${t.name}" data-reference="${t.reference || ''}">
+                            <div class="timeline-icon ${t.type === 'sponsor' ? 'sponsor' : t.status}">
+                                <i class="fas fa-${t.type === 'sponsor' ? 'gem' : t.status === 'verified' ? 'check' : t.status === 'rejected' ? 'times' : 'clock'}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <h4>${t.name || 'Unknown'}</h4>
+                                    <span style="font-weight: 700; color: ${t.type === 'sponsor' ? 'var(--payment-sponsor)' : 'var(--success)'};">${formatCurrency(t.amount)}</span>
+                                </div>
+                                <p>
+                                    ${t.type === 'sponsor' ? 'Sponsor Contribution' : 'Team Registration Payment'} • 
+                                    UTR: ${t.reference || 'N/A'}
+                                </p>
+                                <div class="timeline-time">
+                                    <i class="far fa-clock"></i> ${formatDate(t.date)}
+                                    ${t.status && t.type !== 'sponsor' ? 
+                                        `<span class="status-badge status-${t.status}" style="margin-left: 12px;">${t.status}</span>` : 
+                                        '<span class="status-badge status-sponsor" style="margin-left: 12px;">Sponsor</span>'}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('content-area').innerHTML = html;
+        }
+
+        // ============================================
+        // HELPER FUNCTIONS
+        // ============================================
+        function getRecentTransactions(limit) {
+            const transactions = [
+                ...allPayments.map(p => ({
+                    id: p.id,
+                    type: p.type === 'sponsor' ? 'sponsor' : 'team',
+                    name: p.type === 'sponsor' ? (p.sponsorName || p.name) : (allTeams.find(t => t.id === p.teamId)?.teamName || 'Unknown Team'),
+                    reference: p.utrNumber || p.transactionId,
+                    amount: p.amount || 2000,
+                    status: p.status || (p.type === 'sponsor' ? 'sponsor' : 'pending'),
+                    date: p.submittedAt || p.createdAt || p.date
+                }))
+            ].sort((a, b) => {
+                const dateA = a.date?.toDate?.() || new Date(a.date || 0);
+                const dateB = b.date?.toDate?.() || new Date(b.date || 0);
+                return dateB - dateA;
+            }).slice(0, limit);
+            
+            return transactions;
+        }
+
+        function getThisMonthSponsorCount() {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            return sponsorPayments.filter(s => {
+                const date = s.createdAt?.toDate?.() || new Date(s.date);
+                return date >= firstDay;
+            }).length;
+        }
+
+        // ============================================
+        // FILTER FUNCTIONS
+        // ============================================
+        function filterPayments(status) {
+            const filter = document.getElementById('payment-filter').value;
+            const search = document.getElementById('payment-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#payments-table tbody tr');
+            
+            rows.forEach(row => {
+                const teamName = row.getAttribute('data-team')?.toLowerCase() || '';
+                const utr = row.getAttribute('data-utr')?.toLowerCase() || '';
+                let show = true;
+                
+                // Apply filter
+                if (filter === 'with-team' && !teamName) show = false;
+                if (filter === 'without-team' && teamName) show = false;
+                
+                // Apply search
+                if (search && !teamName.includes(search) && !utr.includes(search)) show = false;
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        function searchPayments(status) {
+            filterPayments(status);
+        }
+
+        function filterHistory() {
+            const type = document.getElementById('history-type').value;
+            const status = document.getElementById('history-status').value;
+            const search = document.getElementById('history-search').value.toLowerCase();
+            
+            const items = document.querySelectorAll('.timeline-item');
+            
+            items.forEach(item => {
+                const itemType = item.getAttribute('data-type');
+                const itemStatus = item.getAttribute('data-status');
+                const itemName = item.getAttribute('data-name')?.toLowerCase() || '';
+                const itemRef = item.getAttribute('data-reference')?.toLowerCase() || '';
+                
+                let show = true;
+                
+                if (type !== 'all' && itemType !== type) show = false;
+                if (status !== 'all' && itemStatus !== status) show = false;
+                if (search && !itemName.includes(search) && !itemRef.includes(search)) show = false;
+                
+                item.style.display = show ? 'flex' : 'none';
+            });
+        }
+
+        // ============================================
+        // PAYMENT ACTIONS
+        // ============================================
+        async function verifyPayment(paymentId, teamId) {
+            if (!confirm('Are you sure you want to verify this payment?')) return;
+            
+            try {
+                // Update payment
+                await db.collection(COLLECTIONS.PAYMENTS).doc(paymentId).update({
+                    status: 'verified',
+                    verifiedBy: 'Admin',
+                    verifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Update team
+                if (teamId) {
+                    await db.collection(COLLECTIONS.TEAMS).doc(teamId).update({
+                        paymentStatus: 'verified',
+                        status: 'verified',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                showToast('Payment verified successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error verifying payment:', error);
+                showToast('Failed to verify payment', 'error');
+            }
+        }
+
+        function openRejectModal(paymentId, teamId) {
+            document.getElementById('reject-payment-id').value = paymentId;
+            document.getElementById('reject-team-id').value = teamId;
+            document.getElementById('reject-modal').style.display = 'flex';
+        }
+
+        function closeRejectModal() {
+            document.getElementById('reject-modal').style.display = 'none';
+            document.getElementById('rejection-reason').value = '';
+        }
+
+        async function confirmRejectPayment() {
+            const paymentId = document.getElementById('reject-payment-id').value;
+            const teamId = document.getElementById('reject-team-id').value;
+            const reason = document.getElementById('rejection-reason').value;
+            
+            if (!reason.trim()) {
+                showToast('Please provide a rejection reason', 'error');
+                return;
+            }
+            
+            try {
+                // Update payment
+                await db.collection(COLLECTIONS.PAYMENTS).doc(paymentId).update({
+                    status: 'rejected',
+                    verifiedBy: 'Admin',
+                    verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    rejectionReason: reason
+                });
+                
+                // Update team
+                if (teamId) {
+                    await db.collection(COLLECTIONS.TEAMS).doc(teamId).update({
+                        paymentStatus: 'rejected',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                showToast('Payment rejected', 'success');
+                closeRejectModal();
+                
+            } catch (error) {
+                console.error('Error rejecting payment:', error);
+                showToast('Failed to reject payment', 'error');
+            }
+        }
+
+        async function verifyAllPending() {
+            const pending = allPayments.filter(p => p.status === 'pending' && p.type !== 'sponsor');
+            
+            if (pending.length === 0) {
+                showToast('No pending payments to verify', 'warning');
+                return;
+            }
+            
+            if (!confirm(`Verify all ${pending.length} pending payments?`)) return;
+            
+            try {
+                const batch = db.batch();
+                
+                pending.forEach(payment => {
+                    const paymentRef = db.collection(COLLECTIONS.PAYMENTS).doc(payment.id);
+                    batch.update(paymentRef, {
+                        status: 'verified',
+                        verifiedBy: 'Admin',
+                        verifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    if (payment.teamId) {
+                        const teamRef = db.collection(COLLECTIONS.TEAMS).doc(payment.teamId);
+                        batch.update(teamRef, {
+                            paymentStatus: 'verified',
+                            status: 'verified',
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                });
+                
+                await batch.commit();
+                showToast(`Verified ${pending.length} payments`, 'success');
+                
+            } catch (error) {
+                console.error('Error verifying all payments:', error);
+                showToast('Failed to verify payments', 'error');
+            }
+        }
+
+        // ============================================
+        // SPONSOR FUNCTIONS
+        // ============================================
+        function openSponsorModal() {
+            document.getElementById('sponsor-modal').style.display = 'flex';
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('sponsor-date').value = today;
+        }
+
+        function closeSponsorModal() {
+            document.getElementById('sponsor-modal').style.display = 'none';
+            document.getElementById('sponsor-form').reset();
+        }
+
+        async function addSponsorPayment() {
+            const sponsorName = document.getElementById('sponsor-name').value.trim();
+            const amount = parseInt(document.getElementById('sponsor-amount').value);
+            const description = document.getElementById('sponsor-description').value.trim();
+            const transactionId = document.getElementById('sponsor-txn-id').value.trim();
+            const date = document.getElementById('sponsor-date').value;
+            
+            if (!sponsorName || !amount) {
+                showToast('Please fill in required fields', 'error');
+                return;
+            }
+            
+            const sponsorData = {
+                sponsorName: sponsorName,
+                name: sponsorName,
+                amount: amount,
+                description: description,
+                purpose: description,
+                transactionId: transactionId || null,
+                txnId: transactionId || null,
+                date: date,
+                type: 'sponsor',
+                status: 'verified',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                verifiedBy: 'Admin'
+            };
+            
+            try {
+                await db.collection(COLLECTIONS.PAYMENTS).add(sponsorData);
+                
+                showToast('Sponsor amount added successfully', 'success');
+                closeSponsorModal();
+                
+            } catch (error) {
+                console.error('Error adding sponsor:', error);
+                showToast('Failed to add sponsor amount', 'error');
+            }
+        }
+
+        // ============================================
+        // DELETE SPONSOR FUNCTION
+        // ============================================
+        function deleteSponsor(sponsorId) {
+            // Store the ID and show modal
+            document.getElementById('delete-sponsor-id').value = sponsorId;
+            document.getElementById('delete-confirm-modal').style.display = 'flex';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-confirm-modal').style.display = 'none';
+            document.getElementById('delete-sponsor-id').value = '';
+        }
+
+        async function confirmDeleteSponsor() {
+            const sponsorId = document.getElementById('delete-sponsor-id').value;
+            
+            if (!sponsorId) {
+                closeDeleteModal();
+                return;
+            }
+            
+            try {
+                showToast('Deleting sponsor...', 'info');
+                await db.collection(COLLECTIONS.PAYMENTS).doc(sponsorId).delete();
+                showToast('Sponsor amount deleted successfully', 'success');
+                closeDeleteModal();
+            } catch (error) {
+                console.error('Error deleting sponsor:', error);
+                showToast('Failed to delete sponsor: ' + error.message, 'error');
+                closeDeleteModal();
+            }
+        }
+
+        // ============================================
+        // DETAIL VIEW FUNCTIONS
+        // ============================================
+        async function viewPaymentDetails(paymentId) {
+            const payment = allPayments.find(p => p.id === paymentId);
+            if (!payment) return;
+            
+            const team = payment.teamId ? allTeams.find(t => t.id === payment.teamId) : null;
+            
+            const html = `
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                        <div class="status-badge status-${payment.status || 'pending'}" style="font-size: 14px;">
+                            ${payment.status || 'pending'}
+                        </div>
+                        <span style="color: var(--text-light);">ID: ${payment.id.substring(0, 8)}...</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <div style="font-size: 32px; font-weight: 800; color: var(--success);">
+                            ${formatCurrency(payment.amount || 2000)}
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label>UTR Number</label>
+                            <div style="font-family: monospace; font-size: 16px;">${payment.utrNumber || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Submitted By</label>
+                            <div>${payment.submittedByEmail || 'Unknown'}</div>
+                            <div style="font-size: 11px; color: var(--text-light);">${payment.submittedBy || ''}</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Submitted On</label>
+                            <div>${formatDate(payment.submittedAt)}</div>
+                        </div>
+                        
+                        ${payment.verifiedAt ? `
+                            <div class="form-group">
+                                <label>Verified On</label>
+                                <div>${formatDate(payment.verifiedAt)}</div>
+                                <div style="font-size: 11px; color: var(--text-light);">By: ${payment.verifiedBy || 'Admin'}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${payment.rejectionReason ? `
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label>Rejection Reason</label>
+                                <div style="color: var(--danger); background: #fee2e2; padding: 12px; border-radius: 8px;">
+                                    ${payment.rejectionReason}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${team ? `
+                        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                            <h3 style="margin-bottom: 16px;">Team Details</h3>
+                            <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px;">
+                                <div style="font-weight: 700; font-size: 18px; margin-bottom: 8px;">${team.teamName || 'Unnamed Team'}</div>
+                                <div style="color: var(--text-secondary); margin-bottom: 4px;">${team.organization || 'No organization'}</div>
+                                <div style="color: var(--primary); font-weight: 600;">${team.theme || 'Open Track'}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('payment-detail-content').innerHTML = html;
+            
+            // Add action buttons based on status
+            const actionsDiv = document.getElementById('payment-actions');
+            if (payment.status === 'pending') {
+                actionsDiv.innerHTML = `
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-success" style="flex: 1;" onclick="verifyPayment('${payment.id}', '${payment.teamId || ''}'); closePaymentDetailModal();">
+                            <i class="fas fa-check-circle"></i> Verify Payment
+                        </button>
+                        <button class="btn btn-danger" style="flex: 1;" onclick="openRejectModalFromDetail('${payment.id}', '${payment.teamId || ''}')">
+                            <i class="fas fa-times-circle"></i> Reject
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closePaymentDetailModal()" style="width: 100%;">
+                        Close
+                    </button>
+                `;
+            }
+            
+            document.getElementById('payment-detail-modal').style.display = 'flex';
+        }
+
+        function openRejectModalFromDetail(paymentId, teamId) {
+            closePaymentDetailModal();
+            openRejectModal(paymentId, teamId);
+        }
+
+        function closePaymentDetailModal() {
+            document.getElementById('payment-detail-modal').style.display = 'none';
+        }
+
+        function viewSponsorDetails(sponsorId) {
+            const sponsor = sponsorPayments.find(s => s.id === sponsorId);
+            if (!sponsor) return;
+            
+            const html = `
+                <div>
+                    <div class="form-group">
+                        <label>Sponsor Name</label>
+                        <div style="font-weight: 700; font-size: 18px;">${sponsor.sponsorName || sponsor.name || 'Unnamed Sponsor'}</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <div style="font-size: 24px; font-weight: 700; color: var(--payment-sponsor);">${formatCurrency(sponsor.amount)}</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description</label>
+                        <div>${sponsor.description || sponsor.purpose || 'No description'}</div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Transaction ID</label>
+                            <div style="font-family: monospace;">${sponsor.transactionId || sponsor.txnId || 'N/A'}</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Date Added</label>
+                            <div>${formatDate(sponsor.createdAt || sponsor.date)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('payment-detail-content').innerHTML = html;
+            document.getElementById('payment-actions').innerHTML = `
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="editSponsor('${sponsor.id}')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn btn-danger" style="flex: 1;" onclick="deleteSponsor('${sponsor.id}'); closePaymentDetailModal();">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('payment-detail-modal').style.display = 'flex';
+        }
+
+        function editSponsor(sponsorId) {
+            showToast('Edit feature coming soon', 'info');
+        }
+
+        function editPayment(paymentId) {
+            showToast('Edit feature coming soon', 'info');
+        }
+
+        // ============================================
+        // EXPORT FUNCTIONS
+        // ============================================
+        function exportPaymentReport() {
+            const data = {
+                generated: new Date().toISOString(),
+                stats: paymentStats,
+                payments: allPayments,
+                sponsors: sponsorPayments,
+                teams: allTeams
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `payment_report_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('Payment report exported', 'success');
+        }
+
+        function exportPayments(status) {
+            const payments = allPayments.filter(p => p.status === status && p.type !== 'sponsor');
+            
+            let csv = 'Date,Team Name,Organization,UTR,Amount,Submitted By,Status\n';
+            
+            payments.forEach(p => {
+                const team = allTeams.find(t => t.id === p.teamId);
+                csv += `"${formatDate(p.submittedAt)}","${team ? team.teamName : 'Unknown'}","${team ? team.organization : ''}","${p.utrNumber || ''}",${p.amount || 2000},"${p.submittedByEmail || ''}","${p.status}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${status}_payments_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast(`${status} payments exported`, 'success');
+        }
+
+        function exportSponsors() {
+            let csv = 'Date,Sponsor Name,Description,Amount,Transaction ID\n';
+            
+            sponsorPayments.forEach(s => {
+                csv += `"${formatDate(s.createdAt || s.date)}","${s.sponsorName || s.name || 'Unnamed'}","${s.description || s.purpose || ''}",${s.amount},"${s.transactionId || s.txnId || ''}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sponsors_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('Sponsors exported', 'success');
+        }
+
+        function exportFullHistory() {
+            const transactions = getRecentTransactions(10000);
+            
+            let csv = 'Date,Type,Name,Reference,Amount,Status\n';
+            
+            transactions.forEach(t => {
+                csv += `"${formatDate(t.date)}","${t.type}","${t.name}","${t.reference || ''}",${t.amount},"${t.status}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `full_history_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('Full history exported', 'success');
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('dark-mode-icon').className = 'fas fa-sun';
+            }
+            
+            // Load all data
+            loadAllData();
+            
+            // Close modals when clicking outside
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-backdrop')) {
+                    e.target.style.display = 'none';
+                }
+            });
+            
+            // Close modals with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
